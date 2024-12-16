@@ -1,10 +1,8 @@
 import requests
 
-def fetch_website(url):
-    response = requests.get(url)
-    print(f"Status Code: {response.status_code}")
-    print(f"Headers: {response.headers}")
-    print(f"Content: {response.text[:500]}")  # Print first 500 characters
+def fetch_website_vulnerable(url):
+    response = requests.get(url, verify=False)  # SSL verification disabled
+    print(f"Content: {response.text[:500]}")
 
 if __name__ == "__main__":
-    fetch_website("https://www.example.com")
+    fetch_website_vulnerable("https://example.com")
