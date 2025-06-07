@@ -1,0 +1,21 @@
+def xor_encrypt(plain_text, key):
+    # Encrypts the plain_text with the repeating key using XOR
+    cipher_bytes = bytes([ord(c) ^ ord(key[i % len(key)]) for i, c in enumerate(plain_text)])
+    return cipher_bytes
+
+def main():
+    print("=== XOR Encryption ===")
+    
+    # Get plain text and key from the user
+    plain_text = input("Enter the text to encrypt: ").strip()
+    key = input("Enter the encryption key (2-4 characters): ").strip()
+
+    # Encrypt the text
+    encrypted_bytes = xor_encrypt(plain_text, key)
+
+    # Display the encrypted text as a hex string
+    encrypted_hex = encrypted_bytes.hex()
+    print(f"\nEncrypted Hex String: {encrypted_hex}")
+    
+if __name__ == "__main__":
+    main()
