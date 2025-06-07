@@ -1,0 +1,152 @@
+import tkinter as tk
+from tkinter import messagebox
+
+# --- Core Logic ---
+def xor_encrypt(plain_text, key):
+    cipher_bytes = bytes([ord(c) ^ ord(key[i % len(key)]) for i, c in enumerate(plain_text)])
+    return cipher_bytes
+
+def is_mostly_printable(text, threshold=0.9):
+    if not text:
+        return False
+    printable = sum(1 for c in text if 32 <= ord(c) < 127)
+    return (printable / len(text)) >= threshold
+
+def xor_decrypt_repeating(cipher_bytes, key_bytes):
+    return ''.join(chr(b ^ key_bytes[i % len(key_bytes)]) for i, b in enumerate(cipher_bytes))
+
+def crack_with_key(cipher_bytes, key_str):
+    key_bytes = key_str.encode()
+    decrypted = xor_decrypt_repeating(cipher_bytes, key_bytes)
+    return decrypted if is_mostly_printable(decrypted) else None
+
+# --- GUI ---
+root = tk.Tk()
+root.title("XOR Encryptor & Decryptor")
+
+# --- Frames for Encrypt and Decrypt ---
+encrypt_frame = tk.Frame(root)
+decrypt_frame = tk.Frame(root)
+for frame in (encrypt_frame, decrypt_frame):
+    frame.grid(row=1, column=0, sticky="nsew")
+
+def show_frame(frame):
+    frame.tkraise()
+    status_label.config(text="")
+
+# --- Navigation Buttons ---
+nav_frame = tk.Frame(root)
+nav_frame.grid(row=0, column=0, pady=10)
+tk.Button(nav_frame, text="Encrypt", width=15, command=lambda: show_frame(encrypt_frame)).pack(side=tk.LEFT, padx=5)
+tk.Button(nav_frame, text="Decrypt", width=15, command=lambda: show_frame(decrypt_frame)).pack(side=tk.LEFT, padx=5)
+
+# --- Encrypt Frame ---
+tk.Label(encrypt_frame, text="Enter Text to Encrypt:").pack(pady=(10,0))
+enc_text_entry = tk.Text(encrypt_frame, height=3, width=50)
+enc_text_entry.pack()
+
+tk.Label(encrypt_frame, text="Enter Key (2-4 characters):").pack(pady=(10,0))
+enc_key_entry = tk.Entry(encrypt_frame, width=20)
+enc_key_entry.pack()
+
+def encrypt_action():
+    plain_text = enc_text_entry.get("1.0", tk.END).strip()
+    key = enc_key_entry.get().strip()
+    if not plain_text or not key:
+        enc_result_label.config(text="Please enter both text and key.", fg="red")
+        enc_copy_button.config(state=tk.DISABLED)
+        return
+    if not (2 <= len(key) <= 4):
+        enc_result_label.config(text="Key must be 2-4 characters.", fg="red")
+        enc_copy_button.config(state=tk.DISABLED)
+        return
+    encrypted_bytes = xor_encrypt(plain_text, key)
+    encrypted_hex = encrypted_bytes.hex()
+    enc_result_label.config(text=f"Encrypted Hex String:\n{encrypted_hex}", fg="green")
+    enc_copy_button.config(state=tk.NORMAL)
+    status_label.config(text="Encryption successful!", fg="green")
+
+def enc_copy_to_clipboard():
+    hex_str = enc_result_label.cget("text").replace("Encrypted Hex String:\n", "").strip()
+    if hex_str:
+        root.clipboard_clear()
+        root.clipboard_append(hex_str)
+        root.update()
+        status_label.config(text="Encrypted hex string copied to clipboard!", fg="green")
+    else:
+        status_label.config(text="Nothing to copy!", fg="red")
+
+enc_encrypt_button = tk.Button(encrypt_frame, text="Encrypt", command=encrypt_action)
+enc_encrypt_button.pack(pady=10)
+
+enc_result_label = tk.Label(encrypt_frame, text="", wraplength=400, justify="left")
+enc_result_label.pack(pady=10)
+
+enc_copy_button = tk.Button(encrypt_frame, text="Copy Hex to Clipboard", command=enc_copy_to_clipboard, state=tk.DISABLED)
+enc_copy_button.pack(pady=5)
+
+# --- Decrypt Frame ---
+tk.Label(decrypt_frame, text="Enter Hex String (no 0x, no spaces):").pack(pady=(10,0))
+dec_hex_entry = tk.Text(decrypt_frame, height=3, width=50)
+dec_hex_entry.pack()
+
+def paste_hex():
+    try:
+        data = root.clipboard_get()
+        dec_hex_entry.delete("1.0", tk.END)
+        dec_hex_entry.insert(tk.END, data)
+        status_label.config(text="Hex pasted from clipboard.", fg="green")
+    except tk.TclError:
+        status_label.config(text="No text in clipboard to paste.", fg="red")
+
+tk.Button(decrypt_frame, text="Paste Hex from Clipboard", command=paste_hex).pack(pady=(0,5))
+
+tk.Label(decrypt_frame, text="Enter Key (2-4 characters):").pack(pady=(10,0))
+dec_key_entry = tk.Entry(decrypt_frame, width=20)
+dec_key_entry.pack()
+
+def paste_key():
+    try:
+        dec_key_entry.delete(0, tk.END)
+        dec_key_entry.insert(0, root.clipboard_get())
+        status_label.config(text="Key pasted from clipboard.", fg="green")
+    except tk.TclError:
+        status_label.config(text="No text in clipboard to paste.", fg="red")
+
+tk.Button(decrypt_frame, text="Paste Key from Clipboard", command=paste_key).pack(pady=(0,10))
+
+def decrypt_action():
+    hex_str = dec_hex_entry.get("1.0", tk.END).strip()
+    key = dec_key_entry.get().strip()
+    if not hex_str or not key:
+        dec_result_label.config(text="Please enter both hex string and key.", fg="red")
+        return
+    if not (2 <= len(key) <= 4):
+        dec_result_label.config(text="Key must be 2-4 characters.", fg="red")
+        return
+    try:
+        cipher_bytes = bytes.fromhex(hex_str)
+    except ValueError:
+        dec_result_label.config(text="Invalid hex format.", fg="red")
+        return
+    decrypted = crack_with_key(cipher_bytes, key)
+    if decrypted:
+        dec_result_label.config(text=f"Decrypted Text:\n{decrypted}", fg="green")
+        status_label.config(text="Decryption successful!", fg="green")
+    else:
+        dec_result_label.config(text="❌ Decryption failed. The result is not mostly printable.", fg="red")
+        status_label.config(text="Decryption failed.", fg="red")
+
+dec_decrypt_button = tk.Button(decrypt_frame, text="Decrypt", command=decrypt_action)
+dec_decrypt_button.pack(pady=10)
+
+dec_result_label = tk.Label(decrypt_frame, text="", wraplength=400, justify="left")
+dec_result_label.pack(pady=10)
+
+# --- Status Label (shared) ---
+status_label = tk.Label(root, text="", fg="green", wraplength=400, justify="left")
+status_label.grid(row=2, column=0, pady=5)
+
+# --- Start with Encrypt Frame ---
+show_frame(encrypt_frame)
+root.mainloop()
