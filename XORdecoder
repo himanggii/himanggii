@@ -1,0 +1,55 @@
+import itertools
+import string
+
+# Check if text is mostly printable
+def is_mostly_printable(text, threshold=0.9):
+    if not text:
+        return False
+    printable = sum(1 for c in text if 32 <= ord(c) < 127)
+    return (printable / len(text)) >= threshold
+
+# Score text based on frequency of common English letters
+def frequency_score(text):
+    common_letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    score = sum(text.upper().count(c) for c in common_letters)
+    return score
+
+# XOR decryption with a repeating key
+def xor_decrypt_repeating(cipher_bytes, key_bytes):
+    return ''.join(chr(b ^ key_bytes[i % len(key_bytes)]) for i, b in enumerate(cipher_bytes))
+
+# Cracker logic using user-provided key
+def crack_with_key(cipher_bytes, key_str):
+    key_bytes = key_str.encode()
+    decrypted = xor_decrypt_repeating(cipher_bytes, key_bytes)
+
+    if is_mostly_printable(decrypted):
+        print("\n🔓 Decrypted Text:\n" + "-" * 40)
+        print(decrypted)
+    else:
+        print("\n❌ Decryption failed. The result is not mostly printable.")
+
+# Read cipher input as hex string
+def read_cipher_hex():
+    hex_str = input("Enter hex string (no 0x, no spaces): ").strip()
+    try:
+        return bytes.fromhex(hex_str)
+    except ValueError:
+        print("Invalid hex format.")
+        exit()
+
+# Main entry point
+def main():
+    print("=== Advanced XOR Cipher Cracker ===")
+    cipher_bytes = read_cipher_hex()
+
+    key = input("Enter the decryption key (2-4 characters): ").strip()
+    if not (2 <= len(key) <= 4):
+        print("Invalid key length. Key must be 2-4 characters.")
+        return
+
+    print("\nCracking XOR encryption with provided key...")
+    crack_with_key(cipher_bytes, key)
+
+if __name__ == "__main__":
+    main()
